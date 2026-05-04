@@ -72,7 +72,7 @@ BEGIN
 	SET paivien_maara = DATEDIFF(varaus_paattyy, varaus_alkaa);
 	SELECT auto.paivahinta INTO paivahinta
 	FROM autot auto
-	WHERE auto_id = Auto_Id;
+	WHERE auto.auto_id = Auto_Id;
 
 	SET kokonaishinta = paivahinta * paivien_maara;
 
