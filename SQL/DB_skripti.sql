@@ -87,12 +87,18 @@ DELIMITER ;
 -- Jos on, lisää rivi Varaukset-tauluun ja päivitä auton tila Autot-taulussa.
 -- Jos auto on jo varattu, peruuta transaktio ja nosta virheilmoitus (SIGNAL SQLSTATE).
 
-CREATE OR REPLACE PROCEDURE TeeVaraus(IN p_ INT)
+CREATE OR REPLACE PROCEDURE TeeVaraus(IN asiakas_id INT, IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
 BEGIN
 DECLARE strNimi VARCHAR(200);
-SELECT friendName INTO strNimi
-FROM friends
-WHERE id=p_kaveriID;
-SELECT CONCAT('*** ',strNimi,' ***') AS Tulos;
+START TRANSACTION;
+
+IF
+COMMIT;
+
+
+ELSE
+	ROLLBACK;
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
+
+
 END//
-CALL tulostaKaveri(2);
