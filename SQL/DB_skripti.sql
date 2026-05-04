@@ -60,16 +60,16 @@ kenen_tekema VARCHAR(100) NOT NULL
 
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
-DELIMITER //
-CREATE OR REPLACE FUNCTION LaskeHinta(IN Auto_Id INT, IN Varaus_Alkaa DATETIME, IN Varaus_Paattyy DATETIME
-RETURNS DECIMAL(8,2))
+DELIMITER $$
+CREATE OR REPLACE FUNCTION LaskeHinta(IN Auto_Id INT, IN Varaus_Alkaa DATETIME, IN Varaus_Paattyy DATETIME)
+RETURNS DECIMAL(8,2)
 DETERMINISTIC
 BEGIN
 	DECLARE kokonaishinta DECIMAL(8,2);
 	DECLARE paivien_maara int;
 	DECLARE paivahinta DECIMAL(8,2);
 
-	paivien_maara = DATEDIFF(varaus_paattyy, varaus_alkaa);
+	SET paivien_maara = DATEDIFF(varaus_paattyy, varaus_alkaa);
 	SELECT auto.paivahinta INTO paivahinta
 	FROM autot auto
 	WHERE auto_id = Auto_Id;
@@ -77,5 +77,5 @@ BEGIN
 	SET kokonaishinta = paivahinta * paivien_maara;
 
 	RETURN kokonaishinta;
-END//
+END$$
 DELIMITER ;
