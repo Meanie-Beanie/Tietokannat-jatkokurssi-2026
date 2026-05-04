@@ -61,7 +61,7 @@ kenen_tekema VARCHAR(100) NOT NULL
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
 DELIMITER $$
-CREATE OR REPLACE FUNCTION LaskeHinta(IN Auto_Id INT, IN Varaus_Alkaa DATETIME, IN Varaus_Paattyy DATETIME)
+CREATE OR REPLACE FUNCTION LaskeHinta(IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
 RETURNS DECIMAL(8,2)
 DETERMINISTIC
 BEGIN
@@ -69,13 +69,30 @@ BEGIN
 	DECLARE paivien_maara int;
 	DECLARE paivahinta DECIMAL(8,2);
 
-	SET paivien_maara = DATEDIFF(varaus_paattyy, varaus_alkaa);
+	SET paivien_maara = DATEDIFF(p_varaus_paattyy, p_varaus_alkaa);
 	SELECT auto.paivahinta INTO paivahinta
 	FROM autot auto
-	WHERE auto.auto_id = Auto_Id;
+	WHERE auto.auto_id = p_auto_id;
 
 	SET kokonaishinta = paivahinta * paivien_maara;
 
 	RETURN kokonaishinta;
 END$$
 DELIMITER ;
+
+-- Tallennettu proseduuri (Stored Procedure): TeeVaraus
+-- Proseduuri ottaa parametreina asiakkaan ID:n, auton ID:n, alkupäivän ja loppupäivän.
+-- Transaktio: Proseduurin sisällä on käytettävä transaktiota (START TRANSACTION, COMMIT, ROLLBACK).
+-- Logiikka: Tarkista ensin, onko auto vapaana kyseisenä ajankohtana.
+-- Jos on, lisää rivi Varaukset-tauluun ja päivitä auton tila Autot-taulussa.
+-- Jos auto on jo varattu, peruuta transaktio ja nosta virheilmoitus (SIGNAL SQLSTATE).
+
+CREATE OR REPLACE PROCEDURE TeeVaraus(IN p_ INT)
+BEGIN
+DECLARE strNimi VARCHAR(200);
+SELECT friendName INTO strNimi
+FROM friends
+WHERE id=p_kaveriID;
+SELECT CONCAT('*** ',strNimi,' ***') AS Tulos;
+END//
+CALL tulostaKaveri(2);
