@@ -57,3 +57,18 @@ toimenpide VARCHAR(40) NOT NULL,
 aikaleima DATETIME DEFAULT CURRENT_TIMESTAMP,
 kenen_tekema VARCHAR(100) NOT NULL
 );
+
+-- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
+-- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
+DELIMITER //
+CREATE OR REPLACE FUNCTION LaskeHinta(IN Auto_Id INT, IN varaus_alkaa DATETIME, IN varaus_paattyy DATETIME
+RETURNS DECIMAL(8,2)
+DETERMINISTIC
+BEGIN
+	DECLARE kokonaishinta DECIMAL(8,2);
+	DECLARE paivien_maara int;
+	
+
+	RETURN kokonaishinta;
+END//
+DELIMITER ;
