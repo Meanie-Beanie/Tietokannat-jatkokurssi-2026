@@ -87,18 +87,45 @@ DELIMITER ;
 -- Jos on, lisää rivi Varaukset-tauluun ja päivitä auton tila Autot-taulussa.
 -- Jos auto on jo varattu, peruuta transaktio ja nosta virheilmoitus (SIGNAL SQLSTATE).
 
-CREATE OR REPLACE PROCEDURE TeeVaraus(IN asiakas_id INT, IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE TeeVaraus(IN p_asiakas_id INT, IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
 BEGIN
-DECLARE strNimi VARCHAR(200);
-START TRANSACTION;
 
-IF
+START TRANSACTION;
+DECLARE varauksien_maara INT;
+
+SELECT COUNT(*) INTO varauksien_maara FROM Varaukset v
+WHERE v.auto_id = p_auto_id
+AND v.varaus_alkaa <= p_varaus_paattyy
+AND v.varaus_paattyy >= p_varaus_alkaa;
+
+IF varauksien_maara = 0 THEN
+
+INSERT INTO Varaukset(
+varaus_alkaa,
+varaus_paattyy,
+kokonaishinta,
+asiakas_id,
+auto_id
+
+) VALUES(
+p_varaus_alkaa,
+p_varaus_paattyy,
+LaskeHinta(p_auto_id, p_varaus_alkaa, p_varaus_paattyy),
+p_asiakas_id,
+p_auto_id
+);
+
+UPDATE Autot
+SET Tila = "vuokralla"
+WHERE auto_id = p_auto_id;
 COMMIT;
 
 
 ELSE
 	ROLLBACK;
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
+ENDIF;
 
-
-END//
+END$$
+DELIMITER ;
