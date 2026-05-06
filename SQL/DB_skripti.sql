@@ -138,11 +138,18 @@ CREATE TRIGGER tr_au_autot_huollossa_loki_lisays
 AFTER UPDATE ON Autot
 FOR EACH ROW
 BEGIN
-	IF NEW.palkka < OLD.palkka THEN
-	SIGNAL SQLSTATE '45000'
-	SET MESSAGE_TEXT = 'Palkkaa ei voi laskea!';
-	ELSEIF NEW.palkka > OLD.palkka THEN
-	CALL KirjaaPalkkaMuutos(OLD.id, OLD.palkka, NEW.palkka);
+	IF NEW.tila = 'huollossa' THEN
+		INSERT INTO Loki(
+		toimenpide,
+		aikaleima,
+		kenen_tekema
+		)
+		VALUES(
+		CONCAT('Auto ', OLD.rekisterinumero, ' siirretty huoltoon.'),
+		NOW(),
+		CURRENT_USER
+		);
 	END IF;
 END $$
 DELIMITER ;
+
