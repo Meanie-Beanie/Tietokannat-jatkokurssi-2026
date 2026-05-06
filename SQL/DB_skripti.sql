@@ -90,9 +90,10 @@ DELIMITER ;
 DELIMITER $$
 CREATE OR REPLACE PROCEDURE TeeVaraus(IN p_asiakas_id INT, IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
 BEGIN
+DECLARE varauksien_maara INT;
 
 START TRANSACTION;
-DECLARE varauksien_maara INT;
+
 
 SELECT COUNT(*) INTO varauksien_maara FROM Varaukset v
 WHERE v.auto_id = p_auto_id
@@ -117,7 +118,7 @@ p_auto_id
 );
 
 UPDATE Autot
-SET Tila = "vuokralla"
+SET Tila = 'vuokralla'
 WHERE auto_id = p_auto_id;
 COMMIT;
 
@@ -125,7 +126,7 @@ COMMIT;
 ELSE
 	ROLLBACK;
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
-ENDIF;
+END IF;
 
 END$$
 DELIMITER ;
