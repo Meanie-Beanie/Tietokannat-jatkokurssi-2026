@@ -164,11 +164,12 @@ BEGIN
 	DECLARE varauksien_maara INT;
 
 	SELECT COUNT(*) INTO varauksien_maara FROM Varaukset v
-	WHERE v.auto_id = OLD.auto_id
-	AND v.varaus_alkaa < OLD.varaus_paattyy
-	AND v.varaus_paattyy > OLD.varaus_alkaa;
+	WHERE v.auto_id = NEW.auto_id
+	AND v.varaus_alkaa < NEW.varaus_paattyy
+	AND v.varaus_paattyy > NEW.varaus_alkaa;
 
 	IF varauksien_maara > 0 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
+	END IF;
 END$$
 DELIMITER ;
