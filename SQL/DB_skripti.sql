@@ -178,8 +178,7 @@ DELIMITER ;
 -- Luo näkymä, joka yhdistää tietoa tauluista: se näyttää asiakkaan nimen (muttei ajokortin numeroa), auton merkin, rekisterinumeron ja varauksen aikavälin.
 -- Näkymän tulee näyttää vain ne varaukset, jotka ovat tällä hetkellä käynnissä tai tulevaisuudessa.
 CREATE VIEW v_AktiivisetVaraukset AS
-SELECT CONCAT(asiakas.etunimi, asiakas.sukunimi), a.merkki, a.rekisterinumero, v.varaus_alkaa, v.varaus_paattyy FROM varaukset v
+SELECT CONCAT(asiakas.etunimi, " ", asiakas.sukunimi), a.merkki, a.rekisterinumero, v.varaus_alkaa, v.varaus_paattyy FROM varaukset v
 JOIN autot a ON a.auto_id = v.auto_id
 JOIN asiakkaat asiakas ON asiakas.asiakas_id = v.asiakas_id
-WHERE v.varaus_alkaa > NOW()
-AND v.varaus_paattyy > NOW();
+WHERE  v.varaus_paattyy > NOW();
