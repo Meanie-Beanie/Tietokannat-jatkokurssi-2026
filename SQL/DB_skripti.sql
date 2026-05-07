@@ -257,9 +257,9 @@ CREATE EVENT PaivitaAutojenTilat
     COMMENT 'Päättyneiden varauksien autot on laitettu vapaiksi.'
     DO
       BEGIN
-			-- Huomista varten:
-			-- Hmm, hae kaikki päivää edellyttävät varaukset ja sitten pitääkin vähän katella netistä, että mikä on paras tapa massapäivittää toisesta datalähteestä
-			-- Ensimmäinen ajatus on käyttää FOR -looppia, mutta kuulostaa kyllä aika tehottomalta ratkaisulta.
-			-- Itseasiassa löysin jo paremman ratkaisun huomiselle: tee UPDATE, jossa on alikysely, jolla haetaan päivää ennen loppuneet varaukset.
+		UPDATE Autot
+		FROM (SELECT varaus_paattyy FROM Varaukset
+		WHERE varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY)) AS Paattyvat_varaukset
+		SET tila = 'vapaa';
       END $$
 DELIMITER ;
