@@ -58,6 +58,36 @@ aikaleima DATETIME DEFAULT CURRENT_TIMESTAMP,
 kenen_tekema VARCHAR(100) NOT NULL
 );
 
+-- Asiakkaat -data
+INSERT INTO Asiakkaat (etunimi,sukunimi,sahkoposti,ajokortin_numero)
+VALUES
+('Mikko', 'Virtanen', 'mikko.virtanen@email.fi', '123456'),
+('Sanna', 'Korhonen', 'sanna.korhonen@email.fi', '234567'),
+('Juhani', 'Mäkinen', 'juhani.makinen@email.fi', '345678'),
+('Laura', 'Niemi', 'laura.niemi@email.fi', '456789'),
+('Pekka', 'Hämäläinen','pekka.hamalainen@email.fi', '567890'),
+('Erika', 'Leinonen', 'erika.leinonen@email.fi', '678901');
+
+-- Autot -data
+INSERT INTO Autot (rekisterinumero,merkki, malli,paivahinta,tila)
+VALUES
+('ABC-123', 'Toyota', 'Corolla', 45.00, 'vapaa'),
+('DEF-456', 'Volkswagen', 'Golf', 55.00, 'vapaa'),
+('GHI-789', 'Ford', 'Focus', 50.00, 'vapaa'),
+('JKL-012', 'BMW', '3 Series', 95.00, 'vapaa'),
+('MNO-345', 'Skoda', 'Octavia', 48.00, 'huollossa'),
+('PQR-678', 'Volvo', 'V60', 80.00, 'vapaa');
+
+-- Varaukset
+INSERT INTO Varaukset (varaus_alkaa, varaus_paattyy, kokonaishinta, asiakas_id, auto_id)
+VALUES
+('2026-06-01', '2026-06-04', 135.00, 1, 1),
+('2026-06-05', '2026-06-10', 275.00, 2, 2),
+('2026-06-03', '2026-06-05', 100.00, 3, 3),
+('2026-06-07', '2026-06-11', 380.00, 4, 4),
+('2026-06-10', '2026-06-11', 45.00, 5, 1),
+('2026-06-15', '2026-06-22', 560.00, 6, 6);
+
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
 DELIMITER $$
@@ -182,3 +212,44 @@ SELECT CONCAT(asiakas.etunimi, " ", asiakas.sukunimi), a.merkki, a.rekisterinume
 JOIN autot a ON a.auto_id = v.auto_id
 JOIN asiakkaat asiakas ON asiakas.asiakas_id = v.asiakas_id
 WHERE  v.varaus_paattyy > NOW();
+
+
+-- Luo rooli asiakaspalvelu.
+-- Anna tälle roolille oikeus lukea (SELECT) ja lisätä (INSERT) tietoa Varaukset ja Asiakkaat -tauluihin, sekä oikeus ajaa proseduuri TeeVaraus.
+CREATE ROLE IF NOT EXISTS 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAuto.Varaukset TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAuto.Asiakkaat TO 'asiakaspalvelu';
+GRANT EXECUTE ON PROCEDURE GoAuto.TeeVaraus TO 'asiakaspalvelu';
+
+
+-- Luo rooli mekaanikko. Anna tälle roolille oikeus päivittää (UPDATE) Autot-taulun tila-saraketta ja lukea v_AktiivisetVaraukset -näkymää.
+CREATE ROLE IF NOT EXISTS 'mekaanikko';
+GRANT UPDATE ON GoAuto.Autot TO 'mekaanikko';
+GRANT SELECT ON  GoAuto.v_aktiivisetvaraukset TO 'mekaanikko';
+
+-- Luo testikäyttäjät molemmille rooleille ja liitä roolit niihin (GRANT ROLE).
+CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost.com' IDENTIFIED BY 'PASSWORD';
+GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost.com';
+
+CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost.com' IDENTIFIED BY 'PASSWORD';
+GRANT 'mekaniikko' TO 'mekaanikko'@'localhost.com';
+
+-- Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon läpi ja ota tuloste talteen.
+EXPLAIN SELECT v.asiakas_id, v.auto_id, v.varaus_alkaa, v.varaus_paattyy  FROM Varaukset v
+JOIN Asiakkaat a ON v.asiakas_id = a.asiakas_id
+WHERE v.asiakas_id = 1;
+
+
+-- Luo tarvittava indeksi (CREATE INDEX), joka nopeuttaa tätä kyselyä (esim. asiakas_id ja varaus_alkaa -sarakkeisiin).
+--Aja EXPLAIN uudelleen ja vertaa tuloksia dokumentaatiossasi.
+CREATE INDEX idx_varaukset_asiakas_varaus_alkaa
+ON Varaukset (asiakas_id, varaus_alkaa);
+
+-- Huom: Varmista ensin, että MariaDB:n tapahtuma-ajastin on päällä: SET GLOBAL event_scheduler = ON;
+SET GLOBAL event_scheduler = ON;
+
+-- Luo tapahtuma PaivitaAutojenTilat, joka ajetaan automaattisesti kerran vuorokaudessa.
+-- Tapahtuman tulee etsiä varaukset, jotka ovat päättyneet eilen, ja päivittää kyseisten autojen tila takaisin 'vapaa'-tilaan Autot-taulussa.
+CREATE EVENT paivita_auto_vapaaksi
+ON SCHEDULE EVERY 
+
