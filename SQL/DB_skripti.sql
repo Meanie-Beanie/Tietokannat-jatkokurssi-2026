@@ -257,9 +257,9 @@ CREATE EVENT PaivitaAutojenTilat
     COMMENT 'Päättyneiden varauksien autot on laitettu vapaiksi.'
     DO
       BEGIN
-		UPDATE Autot
-		FROM (SELECT varaus_paattyy FROM Varaukset
-		WHERE varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY)) AS Paattyvat_varaukset
+		UPDATE a.tila FROM Autot a
+		JOIN Varaukset v ON v.auto_id = a.auto_id
 		SET tila = 'vapaa';
+		WHERE v.varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY));
       END $$
 DELIMITER ;
