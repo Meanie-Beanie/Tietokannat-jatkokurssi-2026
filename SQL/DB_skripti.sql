@@ -250,6 +250,15 @@ SET GLOBAL event_scheduler = ON;
 
 -- Luo tapahtuma PaivitaAutojenTilat, joka ajetaan automaattisesti kerran vuorokaudessa.
 -- Tapahtuman tulee etsiä varaukset, jotka ovat päättyneet eilen, ja päivittää kyseisten autojen tila takaisin 'vapaa'-tilaan Autot-taulussa.
-CREATE EVENT paivita_auto_vapaaksi
-ON SCHEDULE EVERY 
-
+DELIMITER $$
+CREATE EVENT PaivitaAutojenTilat
+    ON SCHEDULE
+      EVERY 1 DAY
+    COMMENT 'Päättyneiden varauksien autot on laitettu vapaiksi.'
+    DO
+      BEGIN
+			-- Huomista varten:
+			-- Hmm, hae kaikki päivää edellyttävät varaukset ja sitten pitääkin vähän katella netistä, että mikä on paras tapa massapäivittää toisesta datalähteestä
+			-- Ensimmäinen ajatus on käyttää FOR -looppia, mutta kuulostaa kyllä aika tehottomalta ratkaisulta.
+      END $$
+DELIMITER ;
