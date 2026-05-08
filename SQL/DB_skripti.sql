@@ -3,7 +3,6 @@ CREATE DATABASE IF NOT EXISTS GoAuto;
 USE GoAuto;
 
 -- Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
-
 Create Table Asiakkaat (
 asiakas_id int AUTO_INCREMENT PRIMARY KEY,
 etunimi varchar(100) NOT NULL,
@@ -14,7 +13,6 @@ ajokortin_numero varchar(50) UNIQUE
 
 -- Autot (auto_id, rekisterinumero, merkki, malli, paivahinta, tila [esim. 'vapaa', 'vuokralla', 'huollossa'])
 -- Auton päivähinnan on oltava suurempi kuin nolla (CHECK).
-
 Create Table Autot (
 auto_id int AUTO_INCREMENT PRIMARY KEY,
 rekisterinumero VARCHAR(20) NOT NULL UNIQUE,
@@ -27,7 +25,6 @@ tila ENUM('vapaa', 'vuokralla', 'huollossa') NOT NULL DEFAULT 'vapaa'
 
 -- Varaukset (varaus_id, asiakas_id, auto_id, varaus_alkaa, varaus_paattyy, kokonaishinta)
 -- Varauksen päättymispäivän on oltava sama tai myöhäisempi kuin alkamispäivä (CHECK).
-
 Create Table Varaukset (
 varaus_id int AUTO_INCREMENT PRIMARY KEY,
 varaus_alkaa DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -50,7 +47,6 @@ REFERENCES Autot(auto_id)
 
 
 -- Loki (loki_id, toimenpide, aikaleima, kenen tekemä)
-
 Create Table Loki(
 loki_id int AUTO_INCREMENT PRIMARY KEY,
 toimenpide VARCHAR(40) NOT NULL,
@@ -169,16 +165,8 @@ AFTER UPDATE ON Autot
 FOR EACH ROW
 BEGIN
 	IF NEW.tila = 'huollossa' THEN
-		INSERT INTO Loki(
-		toimenpide,
-		aikaleima,
-		kenen_tekema
-		)
-		VALUES(
-		CONCAT('Auto ', OLD.rekisterinumero, ' siirretty huoltoon.'),
-		NOW(),
-		CURRENT_USER
-		);
+		INSERT INTO Loki(toimenpide, aikaleima,	kenen_tekema)
+		VALUES(CONCAT('Auto ', OLD.rekisterinumero, ' siirretty huoltoon.'), NOW(),	CURRENT_USER);
 	END IF;
 END$$
 DELIMITER ;
