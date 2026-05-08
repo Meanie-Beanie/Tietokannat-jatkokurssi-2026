@@ -84,6 +84,16 @@ VALUES
 ('2026-06-10', '2026-06-11', 45.00, 5, 1),
 ('2026-06-15', '2026-06-22', 560.00, 6, 6);
 
+-- Loki -data (simuloitu)
+INSERT INTO Loki (loki_id,toimenpide,aikaleima,kenen_tekema)
+VALUES
+('ABC-123 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('DEF-456 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('GHI-789 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('JKL-012 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('MNO-345 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('PQR-678 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
 DELIMITER $$
