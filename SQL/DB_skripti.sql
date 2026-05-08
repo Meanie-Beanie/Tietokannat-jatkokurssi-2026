@@ -1,6 +1,7 @@
-CREATE DATABASE IF NOT EXISTS GoAuto;
+DROP DATABASE IF EXISTS GoAutoDB;
+CREATE DATABASE IF NOT EXISTS GoAutoDB;
 
-USE GoAuto;
+USE GoAutoDB;
 
 -- Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
 Create Table Asiakkaat (
@@ -85,14 +86,14 @@ VALUES
 ('2026-06-15', '2026-06-22', 560.00, 6, 6);
 
 -- Loki -data (simuloitu)
-INSERT INTO Loki (loki_id,toimenpide,aikaleima,kenen_tekema)
+INSERT INTO Loki (toimenpide,aikaleima,kenen_tekema)
 VALUES
-('ABC-123 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
-('DEF-456 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
-('GHI-789 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
-('JKL-012 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
-('MNO-345 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
-('PQR-678 siirretty huoltoon.', 2025-10-12, 'mekaanikko'),
+('ABC-123 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('DEF-456 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('GHI-789 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('JKL-012 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('MNO-345 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('PQR-678 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
 
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
@@ -215,22 +216,22 @@ WHERE  v.varaus_paattyy > NOW();
 -- Luo rooli asiakaspalvelu.
 -- Anna tälle roolille oikeus lukea (SELECT) ja lisätä (INSERT) tietoa Varaukset ja Asiakkaat -tauluihin, sekä oikeus ajaa proseduuri TeeVaraus.
 CREATE ROLE IF NOT EXISTS 'asiakaspalvelu';
-GRANT SELECT, INSERT ON GoAuto.Varaukset TO 'asiakaspalvelu';
-GRANT SELECT, INSERT ON GoAuto.Asiakkaat TO 'asiakaspalvelu';
-GRANT EXECUTE ON PROCEDURE GoAuto.TeeVaraus TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAutoDB.Varaukset TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAutoDB.Asiakkaat TO 'asiakaspalvelu';
+GRANT EXECUTE ON PROCEDURE GoAutoDB.TeeVaraus TO 'asiakaspalvelu';
 
 
 -- Luo rooli mekaanikko. Anna tälle roolille oikeus päivittää (UPDATE) Autot-taulun tila-saraketta ja lukea v_AktiivisetVaraukset -näkymää.
 CREATE ROLE IF NOT EXISTS 'mekaanikko';
-GRANT UPDATE ON GoAuto.Autot TO 'mekaanikko';
-GRANT SELECT ON  GoAuto.v_aktiivisetvaraukset TO 'mekaanikko';
+GRANT UPDATE ON GoAutoDB.Autot TO 'mekaanikko';
+GRANT SELECT ON  GoAutoDB.v_aktiivisetvaraukset TO 'mekaanikko';
 
 -- Luo testikäyttäjät molemmille rooleille ja liitä roolit niihin (GRANT ROLE).
 CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost.com' IDENTIFIED BY 'PASSWORD';
 GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost.com';
 
 CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost.com' IDENTIFIED BY 'PASSWORD';
-GRANT 'mekaniikko' TO 'mekaanikko'@'localhost.com';
+GRANT 'mekaanikko' TO 'mekaanikko'@'localhost.com';
 
 -- Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon läpi ja ota tuloste talteen.
 EXPLAIN SELECT v.asiakas_id, v.auto_id, v.varaus_alkaa, v.varaus_paattyy  FROM Varaukset v
