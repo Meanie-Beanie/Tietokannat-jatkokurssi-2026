@@ -93,7 +93,7 @@ VALUES
 ('GHI-789 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
 ('JKL-012 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
 ('MNO-345 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
-('PQR-678 siirretty huoltoon.', '2025-10-12', 'mekaanikko'),
+('PQR-678 siirretty huoltoon.', '2025-10-12', 'mekaanikko');
 
 -- Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkupäivän ja loppupäivän.
 -- Funktio laskee ja palauttaa varauksen kokonaishinnan (päivien määrä $\times$ auton päivähinta).
@@ -258,6 +258,7 @@ CREATE EVENT PaivitaAutojenTilat
 		UPDATE tila
 		JOIN Varaukset v ON v.auto_id = a.auto_id
 		SET tila = 'vapaa'
-		WHERE v.varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY);
+		WHERE v.varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+		AND tila = 'vuokralla';
       END $$
 DELIMITER ;
