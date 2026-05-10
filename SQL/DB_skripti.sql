@@ -252,13 +252,14 @@ DELIMITER $$
 CREATE EVENT PaivitaAutojenTilat
     ON SCHEDULE
       EVERY 1 DAY
+	STARTS CURRENT_DATE + INTERVAL 23 HOUR + INTERVAL 59 MINUTE
     COMMENT 'Päättyneiden varauksien autot on laitettu vapaiksi.'
     DO
       BEGIN
 		UPDATE Autot a
 		JOIN Varaukset v ON v.auto_id = a.auto_id
 		SET a.tila = 'vapaa'
-		WHERE v.varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+		WHERE v.varaus_paattyy <= NOW() - INTERVAL 1 DAY
 		AND a.tila = 'vuokralla';
       END $$
 DELIMITER ;
@@ -267,6 +268,7 @@ DELIMITER $$
 CREATE EVENT VapautaKayttamatonVaraus
     ON SCHEDULE
       EVERY 1 DAY
+	STARTS CURRENT_DATE + INTERVAL 23 HOUR + INTERVAL 59 MINUTE
     COMMENT 'Käyttämättömät varaukset ovat vapautettu.'
     DO
       BEGIN
