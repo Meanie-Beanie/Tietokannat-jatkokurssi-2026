@@ -1,0 +1,617 @@
+# Tietokannat jatkokurssi -lopputeht‰v‰
+Olli Hirvonen
+
+
+
+## Teht‰v‰nanto
+
+Harjoitustyˆ: Autovuokraamon tietokantaj‰rjestelm‰ (MariaDB)
+Tavoite: Suunnitella ja toteuttaa relaatiotietokanta, joka hyˆdynt‰‰ edistyneit‰ MariaDB:n ominaisuuksia: SQL/PSM-ohjelmointia, triggereit‰, transaktioita, tapahtumia ja roolipohjaista p‰‰synhallintaa.
+
+### Tyˆn kuvaus
+Teht‰v‰n‰si on luoda taustaj‰rjestelm‰ "GoAuto"-autovuokraamolle. J‰rjestelm‰n tulee hallita asiakkaita, ajoneuvoja ja varauksia turvallisesti, est‰‰ p‰‰llekk‰iset varaukset automaattisesti sek‰ pit‰‰ kirjaa huolloista.
+
+#### Vaihe 1: Suunnittelu, relaatiot ja rajoittimet
+Suunnittele ja luo tietokanta nimelt‰ GoAutoDB. Tietokannan on t‰ytett‰v‰ v‰hint‰‰n 3. normaalimuodon (3NF) vaatimukset.
+
+Luo seuraavat taulut oikeaoppisine viiteavaimineen (FOREIGN KEY):
+
+Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
+
+Autot (auto_id, rekisterinumero, merkki, malli, paivahinta, tila [esim. 'vapaa', 'vuokralla', 'huollossa'])
+
+Varaukset (varaus_id, asiakas_id, auto_id, varaus_alkaa, varaus_paattyy, kokonaishinta)
+
+Loki (loki_id, toimenpide, aikaleima, kenen_tekema)
+
+M‰‰rit‰ rajoittimet (CONSTRAINTS):
+
+S‰hkˆpostin on oltava yksilˆllinen (UNIQUE).
+
+Auton p‰iv‰hinnan on oltava suurempi kuin nolla (CHECK).
+
+Varauksen p‰‰ttymisp‰iv‰n on oltava sama tai myˆh‰isempi kuin alkamisp‰iv‰ (CHECK).
+
+#### Vaihe 2: Tietokantaohjelmointi (SQL/PSM)
+K‰yt‰ MariaDB:n SQL/PSM -kielt‰ luodaksesi tietokantaan sis‰‰nrakennettua logiikkaa.
+
+Tallennettu funktio (Stored Function): LaskeHinta
+
+Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkup‰iv‰n ja loppup‰iv‰n.
+
+Funktio laskee ja palauttaa varauksen kokonaishinnan (p‰ivien m‰‰r‰ $\times$ auton p‰iv‰hinta).
+
+Tallennettu proseduuri (Stored Procedure): TeeVaraus
+
+Proseduuri ottaa parametreina asiakkaan ID:n, auton ID:n, alkup‰iv‰n ja loppup‰iv‰n.
+
+Transaktio: Proseduurin sis‰ll‰ on k‰ytett‰v‰ transaktiota (START TRANSACTION, COMMIT, ROLLBACK).
+
+Logiikka: Tarkista ensin, onko auto vapaana kyseisen‰ ajankohtana. Jos on, lis‰‰ rivi Varaukset-tauluun ja p‰ivit‰ auton tila Autot-taulussa. Jos auto on jo varattu, peruuta transaktio ja nosta virheilmoitus (SIGNAL SQLSTATE).
+
+#### Vaihe 3: Triggerit ja automaatio
+Lis‰‰ j‰rjestelm‰‰n automaattisia tarkistuksia ja j‰ljitett‰vyytt‰.
+
+Audit-loki (AFTER UPDATE):
+
+Luo triggeri Autot-tauluun. Aina kun auton tila muuttuu arvoon 'huollossa', triggerin tulee automaattisesti lis‰t‰ tietue Loki-tauluun (esim. "Auto [rekisterinumero] siirretty huoltoon").
+
+Turvatarkistus (BEFORE INSERT):
+
+Luo triggeri Varaukset-tauluun, joka est‰‰ p‰‰llekk‰iset varaukset tietokantatasolla. Jos uusi varaus osuu aikav‰lille, jolloin auto on jo varattu, triggerin tulee pys‰ytt‰‰ operaatio ja palauttaa virhe.
+
+#### Vaihe 4: N‰kym‰t, k‰ytt‰j‰hallinta ja roolit
+N‰kym‰ (View): v_AktiivisetVaraukset
+
+Luo n‰kym‰, joka yhdist‰‰ tietoa tauluista: se n‰ytt‰‰ asiakkaan nimen (muttei ajokortin numeroa), auton merkin, rekisterinumeron ja varauksen aikav‰lin. N‰kym‰n tulee n‰ytt‰‰ vain ne varaukset, jotka ovat t‰ll‰ hetkell‰ k‰ynniss‰ tai tulevaisuudessa.
+
+Roolit (Roles) ja oikeudet:
+
+Luo rooli asiakaspalvelu. Anna t‰lle roolille oikeus lukea (SELECT) ja lis‰t‰ (INSERT) tietoa Varaukset ja Asiakkaat -tauluihin, sek‰ oikeus ajaa proseduuri TeeVaraus.
+
+Luo rooli mekaanikko. Anna t‰lle roolille oikeus p‰ivitt‰‰ (UPDATE) Autot-taulun tila-saraketta ja lukea v_AktiivisetVaraukset -n‰kym‰‰.
+
+Luo testik‰ytt‰j‰t molemmille rooleille ja liit‰ roolit niihin (GRANT ROLE).
+
+#### Vaihe 5: Suorituskyvyn optimointi ja tapahtumat
+Suorituskyvyn optimointi (Indeksit ja EXPLAIN):
+
+Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon l‰pi ja ota tuloste talteen.
+
+Luo tarvittava indeksi (CREATE INDEX), joka nopeuttaa t‰t‰ kysely‰ (esim. asiakas_id ja varaus_alkaa -sarakkeisiin).
+
+Aja EXPLAIN uudelleen ja vertaa tuloksia dokumentaatiossasi.
+
+Tapahtumat (Events):
+
+Huom: Varmista ensin, ett‰ MariaDB:n tapahtuma-ajastin on p‰‰ll‰: SET GLOBAL event_scheduler = ON;
+
+Luo tapahtuma PaivitaAutojenTilat, joka ajetaan automaattisesti kerran vuorokaudessa.
+
+Tapahtuman tulee etsi‰ varaukset, jotka ovat p‰‰ttyneet eilen, ja p‰ivitt‰‰ kyseisten autojen tila takaisin 'vapaa'-tilaan Autot-taulussa.
+
+**Palautusohjeet**
+Palauta tyˆ yhten‰ .zip-pakettina (tai GitHub-linkkin‰), joka sis‰lt‰‰:
+
+Tietokantaskripti (GoAuto_dump.sql tai vastaava): T‰ydellinen DDL- ja DML-skripti, jonka ajamalla tietokanta, rakenteet, funktiot, proseduurit, triggerit, eventit ja esimerkkidata (v‰hint‰‰n 5 rivi‰ per taulu) luodaan onnistuneesti puhtaalle MariaDB-palvelimelle.
+
+**Dokumentaatio (Raportti.pdf):**
+
+Lyhyt kuvaus tietokannan rakenteesta (ER-kaavio on plussaa).
+
+Todisteet indeksien toimivuudesta (kuvakaappaukset tai tekstitulosteet EXPLAIN-komennoista ennen ja j‰lkeen).
+
+Lyhyt perustelu valitsemillesi rooleille ja niiden oikeuksille.
+
+---
+
+Kirjoita loppureflektio/palaute opintojaksosta: mik‰ oli toimivaa ja mit‰ kannattaa viel‰ kehitt‰‰ seuraavaan toteutukseen? Mik‰ aihe oli mielenkiintoista ja mik‰ ehk‰ meni hieman ohi tai ei ollut niin kiinnostavaa? Oliko toteutustapa juuri sinulle sopiva? Mit‰ terveisi‰ haluaisit l‰hett‰‰ opettajalle?
+
+## Projektin aloitus
+
+### Tietokantarakenne
+
+[Vaihe 1:n](#Vaihe-1:-Suunnittelu,-relaatiot-ja-rajoittimet) mukaisesti rakennamme seuraavat taulut:
+
+```
+Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
+
+Autot (auto_id, rekisterinumero, merkki, malli, paivahinta, tila [esim. 'vapaa', 'vuokralla', 'huollossa'])
+
+Varaukset (varaus_id, asiakas_id, auto_id, varaus_alkaa, varaus_paattyy, kokonaishinta)
+
+Loki (loki_id, toimenpide, aikaleima, kenen_tekema)
+
+-- M‰‰rit‰ rajoittimet (CONSTRAINTS):
+
+S‰hkˆpostin on oltava yksilˆllinen (UNIQUE).
+
+Auton p‰iv‰hinnan on oltava suurempi kuin nolla (CHECK).
+
+Varauksen p‰‰ttymisp‰iv‰n on oltava sama tai myˆh‰isempi kuin alkamisp‰iv‰ (CHECK).
+```
+
+Rakennan n‰ist‰ fyysisen ERD -kaavion [Visual Paradigm -ohjelmalla](https://www.visual-paradigm.com/). Kuva siit‰ lˆytyy t‰m‰n osion lopusta sek‰ itse tiedosto lˆytyy myˆs versionhallinnasta seuraavasta repositoriosta: [Tietokannat jatkokurssi 2026](https://github.com/Meanie-Beanie/Tietokannat-jatkokurssi-2026). T‰st‰ myˆs alla kuva:
+
+![image](https://hackmd.io/_uploads/S1urcHSRbl.png)
+
+
+
+Huomioita ja muita mieleentulevia asioita:
+
+1) ajokortin_numero ja rekisterinumero eiv‰t ole uniikkeja.
+
+Tulen lis‰‰m‰‰n t‰m‰n, vaikka teht‰v‰nannossa sit‰ ei pyydet‰, koska ei ole henkilˆit‰, joilla on jaettu ajokortti tai ajoneuvoja, joissa useassa on sama rekisterinumero.
+
+2) Tila -arvo
+
+Tila -arvo on teht‰v‰nannossa kuvailtu Enum -tyyppisen‰, mutta jos olisin suunnitellut t‰m‰n itse, niin olisin luonut erillisen 'Tila' -taulun, jonka kautta tieto olisi liitetty 'Varaukset' -tauluun.
+
+Syy t‰h‰n on kohtalaisen yksinkertainen: se on mielest‰ni selke‰mpi sek‰ lis‰ykset ja muutokset on helpompi luoda.
+
+4) Loki -taulun kenen_tekema -kolumni
+
+Itseasiassa t‰ss‰ tekemisen aikana olen uudestaan miettinyt t‰t‰ asemaa, koska alunperin olisin halunnut liitt‰‰ k‰ytt‰j‰n FK:lla VARCHAR -tyyppisen arvon sijaan.
+
+Mutta netiss‰ on paljon keskustelua aiheesta ja t‰st‰ aiheutuu muutama ongelma:
+
+1) V‰ite: K‰ytt‰j‰n poistettaessa se poistaisi myˆs k‰ytt‰j‰n logitiedot. Totuus: Voimme est‰‰ t‰m‰n hyˆdynt‰m‰ll‰ CASCADE DELETE RESTRICT, joka est‰isi k‰ytt‰j‰n poistamisen, jos sill‰ on olemassa logitiedostoja.
+2) V‰ite: Logi -taulu halutaan olevan nopeasti tietoa haettava sek‰ kirjoittava taulu ja Foreign Key olisi hidastava tekij‰. Totuus: T‰m‰ aiheuttaa pient‰ performanssin hidastusta, mutta k‰yt‰nnˆss‰ sen vaikutus olisi aika pieni hyˆtyyn n‰hden.
+3) Totuus: Liitettyn‰ j‰rjestelm‰tauluun, kuten Mysql.Users, tekee tietokannan siirt‰misest‰ vaikean, jos se pit‰‰ siirt‰‰ eri versioon Mysql:st‰ tai esim. t‰ysin eri SQL -moottoriin, kuten SQL Serveriin tai vaikka Oraclen DB:hen. Totuus:
+
+T‰m‰ olisi v‰h‰n helpompi ratkaisu, jos t‰ll‰ olisi erillinen k‰ytt‰j‰ohjelmisto kirjautumisj‰rjestelm‰. Voisin hyˆdynt‰‰ K‰ytt‰j‰ -taulua ja yhdist‰isin sen lokiin.
+
+Mutta en liit‰ sit‰ mitenk‰‰n vaan luon loki -taulun hyˆdynt‰m‰‰n VARCHAR -arvoa, jolle vaan haetaan sen hetkisen k‰ytt‰j‰n nimi ja se syˆtet‰‰n string -arvolla kolumniin.
+
+5) VARCHAR -arvojen koot
+
+Yleens‰ aina, kun olen suunnitellut tietokantoja, olen antanut reilummin pelivaraa tietojen tallennusta varten.
+
+Maksimiarvoja ei koskaan annetta, ellei siihen ole hyv‰‰ syyt‰ ja en koskaan myˆsk‰‰n halua antaa sille minimiarvoa, koska silloin pienimm‰tkin muutokset saattavat rikkoa toimintaa.
+
+Onko maailmassa oikeasti yli 50 kirjainta olevaa etunime‰? Ehk‰ muutama kappale koko maailmassa tai ei ollenkaan, mutta ainakin varmistamme, ett‰ kyseisen henkilˆn kohdalla j‰rjestelm‰mme ei rikkoudu.
+
+### Ensimm‰inen skripti (Perusrakenne, ei tarkistuksia)
+
+```
+-- Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
+
+Create Table Asiakkaat (
+asiakas_id int AUTO_INCREMENT PRIMARY KEY,
+etunimi varchar(100) NOT NULL,
+sukunimi varchar (100) NOT NULL,
+sahkoposti varchar(100) NOT NULL UNIQUE,
+ajokortin_numero varchar(50) UNIQUE
+);
+
+-- Autot (auto_id, rekisterinumero, merkki, malli, paivahinta, tila [esim. 'vapaa', 'vuokralla', 'huollossa'])
+
+Create Table Autot (
+auto_id int AUTO_INCREMENT PRIMARY KEY,
+rekisterinumero VARCHAR(20) NOT NULL UNIQUE,
+merkki VARCHAR(50) NOT NULL,
+malli VARCHAR(50) NOT NULL,
+paivahinta DECIMAL(8,2) NOT NULL,
+tila ENUM('vapaa', 'vuokralla', 'huollossa') NOT NULL DEFAULT 'vapaa'
+);
+
+
+-- Varaukset (varaus_id, asiakas_id, auto_id, varaus_alkaa, varaus_paattyy, kokonaishinta)
+
+Create Table Varaukset (
+varaus_id int AUTO_INCREMENT PRIMARY KEY,
+varaus_alkaa DATETIME DEFAULT CURRENT_TIMESTAMP,
+varaus_paattyy DATETIME,
+kokonaishinta decimal(8,2) NOT NULL,
+asiakas_id int NOT NULL,
+auto_id int NOT NULL,
+
+CONSTRAINT fk_asiakas_id
+FOREIGN KEY (asiakas_id)
+REFERENCES Asiakkaat(asiakas_id),
+
+CONSTRAINT fk_auto_id
+FOREIGN KEY (auto_id)
+REFERENCES Autot(auto_id)
+);
+
+
+-- Loki (loki_id, toimenpide, aikaleima, kenen tekem‰)
+
+Create Table Loki(
+loki_id int AUTO_INCREMENT PRIMARY KEY,
+toimenpide VARCHAR(40) NOT NULL,
+aikaleima DATETIME DEFAULT CURRENT_TIMESTAMP,
+kenen_tekema VARCHAR(100) NOT NULL
+);
+```
+
+Skriptiss‰ saattaa olla virheit‰, etenkin mit‰ tulee avainsanoihin. Ne vaihtelevat hieman eri SQL moottorien v‰lill‰, joten saatan suoritus vaiheessa huomata, ett‰ se onkin eri moottorin avainsana.
+
+Yll‰olevaan skriptist‰ puuttuu viel‰ tarkistukset ja muut vaatimukset, mutta loin alustavan rakenteen n‰in alkuun.
+
+Jos vertaamme aikaisemmin antamaani kuvaan, niin siell‰ muutamat asiat muuttuivat:
+
+1) Muutama NULL -tarkistus lis‰‰.
+2) Desimaalilukujen pienennys 19,2 -> 8,2, koska yhdeks‰‰ntoista lukuun saadaan aika monta numeroa laitettua, niin pienensin sen huomattavasti alemmaksi.
+3) ENUM -arvolla on DEFAULT arvona 'vapaa' sek‰ DATETIME ottaa luontihetken ajan useimmissa tapauksissa, ellei sit‰ erikseen anneta.
+
+### Toinen skripti (Lis‰rajoituksineen)
+
+```
+1) S‰hkˆpostin on oltava yksilˆllinen (UNIQUE).
+
+2) Auton p‰iv‰hinnan on oltava suurempi kuin nolla (CHECK).
+
+3) Varauksen p‰‰ttymisp‰iv‰n on oltava sama tai myˆh‰isempi kuin alkamisp‰iv‰ (CHECK).
+
+```
+
+S‰hkˆposti (ja muutamat muut kolumnit) ovat jo uniikkeja.
+
+En ole itseasiassa koskaan tehnyt CHECK -rajoituksia aikaisemmin. Olen yleens‰ ohjelman kautta rajoittanut tiedon siirtoa, en tietokannan sis‰isesti.
+
+Onneksi [t‰m‰](https://www.w3schools.com/sql/sql_check.asp) ei itseasiassa ole hyvin monimutkainen. Alla on p‰ivitetty versio:
+
+```
+CREATE DATABASE IF NOT EXISTS GoAuto;
+
+USE GoAuto;
+
+-- Asiakkaat (asiakas_id, etunimi, sukunimi, sahkoposti, ajokortin_numero)
+
+Create Table Asiakkaat (
+asiakas_id int AUTO_INCREMENT PRIMARY KEY,
+etunimi varchar(100) NOT NULL,
+sukunimi varchar (100) NOT NULL,
+sahkoposti varchar(100) NOT NULL UNIQUE,
+ajokortin_numero varchar(50) UNIQUE
+);
+
+-- Autot (auto_id, rekisterinumero, merkki, malli, paivahinta, tila [esim. 'vapaa', 'vuokralla', 'huollossa'])
+-- Auton p‰iv‰hinnan on oltava suurempi kuin nolla (CHECK).
+
+Create Table Autot (
+auto_id int AUTO_INCREMENT PRIMARY KEY,
+rekisterinumero VARCHAR(20) NOT NULL UNIQUE,
+merkki VARCHAR(50) NOT NULL,
+malli VARCHAR(50) NOT NULL,
+paivahinta DECIMAL(8,2) NOT NULL CHECK (paivahinta > 0),
+tila ENUM('vapaa', 'vuokralla', 'huollossa') NOT NULL DEFAULT 'vapaa'
+);
+
+
+-- Varaukset (varaus_id, asiakas_id, auto_id, varaus_alkaa, varaus_paattyy, kokonaishinta)
+-- Varauksen p‰‰ttymisp‰iv‰n on oltava sama tai myˆh‰isempi kuin alkamisp‰iv‰ (CHECK).
+
+Create Table Varaukset (
+varaus_id int AUTO_INCREMENT PRIMARY KEY,
+varaus_alkaa DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+varaus_paattyy DATETIME NOT NULL,
+kokonaishinta decimal(8,2) NOT NULL,
+asiakas_id int NOT NULL,
+auto_id int NOT NULL,
+
+CONSTRAINT chk_varaus_aika
+CHECK (varaus_paattyy >= varaus_alkaa),
+
+CONSTRAINT fk_asiakas_id
+FOREIGN KEY (asiakas_id)
+REFERENCES Asiakkaat(asiakas_id),
+
+CONSTRAINT fk_auto_id
+FOREIGN KEY (auto_id)
+REFERENCES Autot(auto_id)
+);
+
+
+-- Loki (loki_id, toimenpide, aikaleima, kenen tekem‰)
+
+Create Table Loki(
+loki_id int AUTO_INCREMENT PRIMARY KEY,
+toimenpide VARCHAR(40) NOT NULL,
+aikaleima DATETIME DEFAULT CURRENT_TIMESTAMP,
+kenen_tekema VARCHAR(100) NOT NULL
+);
+```
+
+V‰h‰n oli kˆkkˆ‰, ett‰ [W3schoolsin sivuilla]([t‰m‰](https://www.w3schools.com/sql/sql_check.asp)) usean rajoitteen esimerkki oli demonstroitu sen nime‰mis -osion alla eik‰ omassa osiossaan tai liitettyn‰ ensimm‰iseen demonstraatioon.
+
+Itseasiassa kokonaishinnassa voisi olla CHECK -tarkistus, ett‰ se ei voisi olla esim. negatiivinen?
+
+Itseasiassa CASCADE -k‰ytt‰ytymist‰ ei ole m‰‰ritelty ja nopeasti netist‰ lukemalla se pit‰isi olla RESTRICT. T‰m‰ on ihan tarpeeksi hyv‰, koska se est‰‰ massadatan tuhoutumista ja sinun pit‰‰ tiet‰‰ tarkalleen, mit‰ poistat ja mist‰. Se on myˆs rasittavaa, koska jos sinun pit‰‰ poistaa kaikki tieto siit‰, sinun pit‰‰ tiet‰‰ tarkalleen miss‰ siihen viitataan.
+
+### Vaihe 2: Tietokantaohjelmointi (SQL/PSM)
+
+#### Tallennettu funktio (Stored Function): LaskeHinta
+
+"Luo funktio, joka ottaa parametreina auton ID:n, varauksen alkup‰iv‰n ja loppup‰iv‰n.
+
+Funktio laskee ja palauttaa varauksen kokonaishinnan (p‰ivien m‰‰r‰ $\times$ auton p‰iv‰hinta)."
+
+https://www.tutorialspoint.com/mysql/mysql-stored-functions.htm
+
+Esim:
+```SQL
+DELIMITER $$
+CREATE OR REPLACE FUNCTION LaskeHinta(IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
+RETURNS DECIMAL(8,2)
+DETERMINISTIC
+BEGIN
+	DECLARE kokonaishinta DECIMAL(8,2);
+	DECLARE paivien_maara int;
+	DECLARE paivahinta DECIMAL(8,2);
+
+	SET paivien_maara = DATEDIFF(p_varaus_paattyy, p_varaus_alkaa);
+	SELECT auto.paivahinta INTO paivahinta
+	FROM autot auto
+	WHERE auto.auto_id = p_auto_id;
+
+	SET kokonaishinta = paivahinta * paivien_maara;
+
+	RETURN kokonaishinta;
+END$$
+DELIMITER ;
+```
+
+Funktion kutsuesimerkki:
+
+```SQL
+-- Auto -olio {auto_id: 1, rekisterinumero: 'ABC-123', merkki: 'Toyota', malli: 'Corolla', paivahinta: 45,0, tila: 'vapaa'}
+
+SELECT LaskeHinta(1, '2026-05-1', '2026-05-6') AS kokonaishinta;
+
+-- palauttaa arvon: 225, joka on 45 * 5.
+```
+
+Itseasiassa hauskasti huomasin vasta nyt, ett‰ periaatteessa yksi p‰iv‰ j‰‰ pois eli jos asiakas hakee auton 1. p‰iv‰, niin seh‰n on periaatteessa 6 p‰iv‰n verran h‰nen k‰ytˆss‰‰n. Mutta v‰h‰n t‰t‰ asiaa tutkiessani tulin siihen p‰‰tˆkseen, ett‰ vuokraustavat ja maksut vaihtelevat aika paljon eri yrityksien v‰lill‰, ett‰ annan nyt t‰m‰n olla vain t‰m‰n autoliikkeen tapa maksuttaa.
+
+
+#### Tallennettu proseduuri (Stored Procedure): TeeVaraus
+
+"Proseduuri ottaa parametreina asiakkaan ID:n, auton ID:n, alkup‰iv‰n ja loppup‰iv‰n.
+
+Transaktio: Proseduurin sis‰ll‰ on k‰ytett‰v‰ transaktiota (START TRANSACTION, COMMIT, ROLLBACK).
+
+Logiikka: Tarkista ensin, onko auto vapaana kyseisen‰ ajankohtana. Jos on, lis‰‰ rivi Varaukset-tauluun ja p‰ivit‰ auton tila Autot-taulussa. Jos auto on jo varattu, peruuta transaktio ja nosta virheilmoitus (SIGNAL SQLSTATE)."
+
+```SQL=
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE TeeVaraus(IN p_asiakas_id INT, IN p_auto_id INT, IN p_varaus_alkaa DATETIME, IN p_varaus_paattyy DATETIME)
+BEGIN
+DECLARE varauksien_maara INT;
+
+START TRANSACTION;
+
+SELECT COUNT(*) INTO varauksien_maara FROM Varaukset v
+WHERE v.auto_id = p_auto_id
+AND v.varaus_alkaa < p_varaus_paattyy
+AND v.varaus_paattyy > p_varaus_alkaa
+AND v.auto.tila = 'vapaa';
+
+IF varauksien_maara = 0 THEN
+    
+    INSERT INTO Varaukset(
+    varaus_alkaa,
+    varaus_paattyy,
+    kokonaishinta,
+    asiakas_id,
+    auto_id) 
+    VALUES(
+    p_varaus_alkaa,
+    p_varaus_paattyy,
+    LaskeHinta(p_auto_id, p_varaus_alkaa, p_varaus_paattyy),
+    p_asiakas_id,
+    p_auto_id);
+
+    UPDATE Autot
+    SET Tila = 'varattu'
+    WHERE auto_id = p_auto_id;
+    
+    COMMIT;
+
+ELSE
+	ROLLBACK;
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
+END IF;
+
+END$$
+DELIMITER ;
+```
+
+T‰ytyy sanoa, ett‰ transactioneita pit‰isi k‰ytt‰‰ useammin ihan kyselyit‰ tehdess‰. Olisin s‰‰stynyt monelta p‰‰nvaivalta. Tosin
+
+Aivoni suli t‰t‰ proseduuria miettiess‰, koska p‰ivien vertailu ja laskeminen aiheutti jo suurta tuskaa, mutta t‰m‰ on loogisesti yll‰tt‰v‰n vaikea tilanne. Minulla oli kolme ongelmatilannetta mieless‰, mutta olen jo unohtanut yhden niist‰, mutta t‰ss‰ on ne kaksi muuta:
+
+##### 1. Ongelmatilanne: Auton tilan p‰ivitys
+Aikaisemmin p‰ivitin auton tilan 'vuokralla', mutta jos auto on varattu tulevaisuutta varten, seh‰n ei ole vuokralla vaan varattu.
+
+Teen erillisen tapahtuman, joka tarkistaa p‰ivitt‰in, ett‰ auto, joka on merkitty 'varattu', mutta aloitusp‰iv‰ on jo ohitettu. Jos ei ole, niin se muuttaa sen vapaaksi.
+
+Huom: Auton tila ei koskaan muutu parhaillaan 'varatuksi', koska se ei kuulu teht‰v‰nantoon.
+
+
+##### 2. Ongelmatilanne: Toimintojen p‰‰llekkyys
+Tied‰n, ett‰ SQL:ss‰ pystyy lukitsemaan tauluja/kolumneja ja sellainen olisi varmaan hyv‰ t‰ll‰isess‰ tilanteessa, jossa usea k‰ytt‰j‰ voisi tehd‰ varauksie samanaikaisesti.
+
+Kurssilla t‰st‰ ei ole tainnut olla mainintaa ja se saattaisi olla ihan mielenkiintoinen aihe tulevaisuuden kursseille.
+
+Olen joutunut kyll‰ ihan tarpeeksi lukemaan dokumentaatiota ja oppimaan t‰t‰ projektia tehdess‰, jonka takia en kyll‰ rupea t‰ss‰ siihen perehtym‰‰n.
+
+### Vaihe 3: Triggerit ja automaatio
+
+Huom. K‰ytin nime‰misess‰ seuraavia k‰yt‰ntˆj‰:
+
+tr_{etukirjaimet_ajoituksesta}_{mit‰_tekee}
+
+esim.
+
+tr_au_autot_huollossa_loki_lisays
+
+eli toisinsanoen:
+
+trigger_after_update_huollossa_loki_lisays
+
+#### Audit-loki (AFTER UPDATE)
+
+"Luo triggeri Autot-tauluun. Aina kun auton tila muuttuu arvoon 'huollossa', triggerin tulee automaattisesti lis‰t‰ tietue Loki-tauluun (esim. "Auto [rekisterinumero] siirretty huoltoon")."
+
+```SQL
+DELIMITER $$
+CREATE TRIGGER tr_au_autot_huollossa_loki_lisays
+AFTER UPDATE ON Autot
+FOR EACH ROW
+BEGIN
+	IF NEW.tila = 'huollossa' THEN
+		INSERT INTO Loki(toimenpide, aikaleima,	kenen_tekema)
+		VALUES(CONCAT('Auto ', OLD.rekisterinumero, ' siirretty huoltoon.'), NOW(),	CURRENT_USER);
+	END IF;
+END$$
+DELIMITER ;
+```
+
+
+
+#### Turvatarkistus (BEFORE INSERT):
+
+"Luo triggeri Varaukset-tauluun, joka est‰‰ p‰‰llekk‰iset varaukset tietokantatasolla. Jos uusi varaus osuu aikav‰lille, jolloin auto on jo varattu, triggerin tulee pys‰ytt‰‰ operaatio ja palauttaa virhe."
+
+```SQL
+DELIMITER $$
+CREATE TRIGGER tr_bi_tarkista_onko_auto_varattu
+BEFORE INSERT ON Varaukset
+FOR EACH ROW
+BEGIN
+DECLARE varauksien_maara INT;
+
+SELECT COUNT(*) INTO varauksien_maara FROM Varaukset v
+WHERE v.auto_id = NEW.auto_id
+AND v.varaus_alkaa < NEW.varaus_paattyy
+AND v.varaus_paattyy > NEW.varaus_alkaa;
+
+IF varauksien_maara > 0 THEN
+    IGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Auto on varattuna valittuna ajankohtana';
+END IF;
+
+END$$
+DELIMITER ;
+```
+
+Logiikka tarkistukseen on otettu suoraan [aikaisemmasta proseduuristamme](#Tallennettu-proseduuri-(Stored-Procedure):-TeeVaraus).
+
+
+### Vaihe 4: N‰kym‰t, k‰ytt‰j‰hallinta ja roolit
+
+#### N‰kym‰ (View): v_AktiivisetVaraukset
+
+"Luo n‰kym‰, joka yhdist‰‰ tietoa tauluista: se n‰ytt‰‰ asiakkaan nimen (muttei ajokortin numeroa), auton merkin, rekisterinumeron ja varauksen aikav‰lin. N‰kym‰n tulee n‰ytt‰‰ vain ne varaukset, jotka ovat t‰ll‰ hetkell‰ k‰ynniss‰ tai tulevaisuudessa."
+
+```SQL
+CREATE VIEW v_AktiivisetVaraukset AS
+SELECT CONCAT(asiakas.etunimi, " ", asiakas.sukunimi),
+a.merkki, a.rekisterinumero, v.varaus_alkaa, v.varaus_paattyy FROM varaukset v
+JOIN autot a ON a.auto_id = v.auto_id
+JOIN asiakkaat asiakas ON asiakas.asiakas_id = v.asiakas_id
+WHERE  v.varaus_paattyy > NOW();
+```
+
+Itseasiassa yll‰tyin miten helppoa n‰kymˆit‰ oli luoda ja k‰ytt‰‰. En ole koskaan tehnyt t‰t‰ aikaisemmin ja t‰ytyy kyll‰ sanoa, ett‰ t‰m‰ on todella k‰tsy juttu.
+
+```SQL
+-- Kutsumme sit‰ seuraavalla tavalla:
+SELECT * from v_aktiivisetvaraukset;
+```
+
+
+#### Asiakaspalvelu -rooli
+
+"Luo rooli asiakaspalvelu. Anna t‰lle roolille oikeus lukea (SELECT) ja lis‰t‰ (INSERT) tietoa Varaukset ja Asiakkaat -tauluihin, sek‰ oikeus ajaa proseduuri TeeVaraus."
+
+```SQL
+CREATE ROLE IF NOT EXISTS 'asiakaspalvelu';
+GRANT SELECT, INSERT ON Varaukset TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON Asiakkaat TO 'asiakaspalvelu';
+GRANT EXECUTE ON PROCEDURE TeeVaraus TO 'asiakaspalvelu';
+```
+
+En ole juurikaan tunnuksiakaan luonut aikaisemmin, joten en tiennyt, miten eri tavoilla niiden oikeuksia voidaan rajata.Kiva!
+
+
+#### Mekaanikko -rooli
+
+Luo rooli mekaanikko. Anna t‰lle roolille oikeus p‰ivitt‰‰ (UPDATE) Autot-taulun tila-saraketta ja lukea v_AktiivisetVaraukset -n‰kym‰‰.
+
+```SQL
+CREATE ROLE IF NOT EXISTS 'mekaanikko';
+GRANT UPDATE(tila) ON Autot TO 'mekaanikko';
+GRANT SELECT ON  v_aktiivisetvaraukset TO 'mekaanikko';
+```
+
+Ensimm‰iseksi minulla oli laitettu UPDATE -oikeudet koko tauluun, mutta t‰m‰ tuli todella suurena yll‰tyksen‰, ett‰ n‰m‰ oikeudet voidaan antaa KOLUMNI kohtaisesti. Tiesin, ett‰ ne voidaan rajata tauluttain ja esim. luku-/kirjoitusoikeuksilla, mutta en tiennyt, ett‰ ne voidaan myˆs rajata noin tarkasti.
+
+Vaikein asia minun oli kirjoittaa sana 'mekaanikko' oikein. Jouduin sen varmaan korjamaaan itse SQL skriptiin noin 5 kertaa.
+
+
+#### Tunnuksien luonti ja oikeuksien antaminen
+
+```SQL
+CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost' IDENTIFIED BY 'PASSWORD';
+GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost';
+
+CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost' IDENTIFIED BY 'PASSWORD';
+GRANT 'mekaanikko' TO 'mekaanikko'@'localhost';
+```
+
+T‰m‰ kirjoitus vaihe on ollut hyˆdyllinen, koska tajusin t‰t‰ laittaessa, ett‰ olin vahingossa laittanut tuon s‰hkˆposti -muotoon ensimm‰iseksi eli
+
+'mekaanikko@localhost.com', vaikka tarkoituksena se oli laittaa 'localhost', koska n‰m‰h‰n ovat kaksi eri asiaa.
+
+### Vaihe 5: Suorituskyvyn optimointi ja tapahtumat
+Suorituskyvyn optimointi (Indeksit ja EXPLAIN):
+
+Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon l‰pi ja ota tuloste talteen.
+
+Luo tarvittava indeksi (CREATE INDEX), joka nopeuttaa t‰t‰ kysely‰ (esim. asiakas_id ja varaus_alkaa -sarakkeisiin).
+
+Aja EXPLAIN uudelleen ja vertaa tuloksia dokumentaatiossasi.
+
+Tapahtumat (Events):
+
+Huom: Varmista ensin, ett‰ MariaDB:n tapahtuma-ajastin on p‰‰ll‰: SET GLOBAL event_scheduler = ON;
+
+Luo tapahtuma PaivitaAutojenTilat, joka ajetaan automaattisesti kerran vuorokaudessa.
+
+Tapahtuman tulee etsi‰ varaukset, jotka ovat p‰‰ttyneet eilen, ja p‰ivitt‰‰ kyseisten autojen tila takaisin 'vapaa'-tilaan Autot-taulussa.
+
+**Palautusohjeet**
+Palauta tyˆ yhten‰ .zip-pakettina (tai GitHub-linkkin‰), joka sis‰lt‰‰:
+
+Tietokantaskripti (GoAuto_dump.sql tai vastaava): T‰ydellinen DDL- ja DML-skripti, jonka ajamalla tietokanta, rakenteet, funktiot, proseduurit, triggerit, eventit ja esimerkkidata (v‰hint‰‰n 5 rivi‰ per taulu) luodaan onnistuneesti puhtaalle MariaDB-palvelimelle.
+
+**Dokumentaatio (Raportti.pdf):**
+
+Lyhyt kuvaus tietokannan rakenteesta (ER-kaavio on plussaa).
+
+Todisteet indeksien toimivuudesta (kuvakaappaukset tai tekstitulosteet EXPLAIN-komennoista ennen ja j‰lkeen).
+
+Lyhyt perustelu valitsemillesi rooleille ja niiden oikeuksille.
+
+
+
+hackmd nime‰minen bi = before insert, au = after update
+
+
+en edes tiennyt, ett‰ pystyy antamaan oikeuden yhteen proseduuriin. Tuolta se lˆytyi paremmin kuin mysql dokumentaatiosta.
+https://stackoverflow.com/questions/10089308/mysql-stored-procedure-permissions
+
+
+https://stackoverflow.com/questions/3108656/grant-a-user-permission-to-only-view-a-mysql-view-and-nothing-else
+
+![image](https://hackmd.io/_uploads/rJK4netAZl.png)
+
+![image](https://hackmd.io/_uploads/Sy6Tngt0-g.png)
+
+https://www.youtube.com/watch?v=t0grczCICMk (Indeksointi nopeuttaa hakua, mutta hidastaa tiedonlis‰yst‰, poistoa tai p‰ivityst‰)
+
+
+https://stackoverflow.com/questions/16674715/granting-permission-to-individual-fields-in-mysql (kolumniin)
