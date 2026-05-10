@@ -20,7 +20,7 @@ rekisterinumero VARCHAR(20) NOT NULL UNIQUE,
 merkki VARCHAR(50) NOT NULL,
 malli VARCHAR(50) NOT NULL,
 paivahinta DECIMAL(8,2) NOT NULL CHECK (paivahinta > 0),
-tila ENUM('vapaa', 'vuokralla', 'huollossa') NOT NULL DEFAULT 'vapaa'
+tila ENUM('vapaa', 'varattu' , 'vuokralla', 'huollossa') NOT NULL DEFAULT 'vapaa'
 );
 
 
@@ -227,11 +227,11 @@ GRANT UPDATE(tila) ON Autot TO 'mekaanikko';
 GRANT SELECT ON  v_aktiivisetvaraukset TO 'mekaanikko';
 
 -- Luo testikäyttäjät molemmille rooleille ja liitä roolit niihin (GRANT ROLE).
-CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost.com' IDENTIFIED BY 'PASSWORD';
-GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost.com';
+CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost' IDENTIFIED BY 'PASSWORD';
+GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost';
 
-CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost.com' IDENTIFIED BY 'PASSWORD';
-GRANT 'mekaanikko' TO 'mekaanikko'@'localhost.com';
+CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost' IDENTIFIED BY 'PASSWORD';
+GRANT 'mekaanikko' TO 'mekaanikko'@'localhost';
 
 -- Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon läpi ja ota tuloste talteen.
 EXPLAIN SELECT v.asiakas_id, v.auto_id, v.varaus_alkaa, v.varaus_paattyy  FROM Varaukset v
@@ -255,10 +255,25 @@ CREATE EVENT PaivitaAutojenTilat
     COMMENT 'Päättyneiden varauksien autot on laitettu vapaiksi.'
     DO
       BEGIN
-		UPDATE tila
+		UPDATE Autot a
 		JOIN Varaukset v ON v.auto_id = a.auto_id
-		SET tila = 'vapaa'
+		SET a.tila = 'vapaa'
 		WHERE v.varaus_paattyy >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-		AND tila = 'vuokralla';
+		AND a.tila = 'vuokralla';
+      END $$
+DELIMITER ;
+
+DELIMITER $$
+CREATE EVENT VapautaKayttamatonVaraus
+    ON SCHEDULE
+      EVERY 1 DAY
+    COMMENT 'Käyttämättömät varaukset ovat vapautettu.'
+    DO
+      BEGIN
+		UPDATE Autot a
+		JOIN Varaukset v ON v.auto_id = a.auto_id
+		SET a.tila = 'vapaa'
+		WHERE v.varaus_alkaa < NOW()
+		AND a.tila = 'varattu';
       END $$
 DELIMITER ;
