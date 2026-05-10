@@ -229,9 +229,11 @@ GRANT SELECT ON  v_aktiivisetvaraukset TO 'mekaanikko';
 -- Luo testikäyttäjät molemmille rooleille ja liitä roolit niihin (GRANT ROLE).
 CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost' IDENTIFIED BY 'PASSWORD';
 GRANT 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost';
+SET DEFAULT ROLE 'asiakaspalvelu' TO 'asiakaspalvelu'@'localhost';
 
 CREATE USER IF NOT EXISTS 'mekaanikko'@'localhost' IDENTIFIED BY 'PASSWORD';
 GRANT 'mekaanikko' TO 'mekaanikko'@'localhost';
+SET DEFAULT ROLE 'mekaanikko' TO 'mekaanikko'@'localhost';
 
 -- Kirjoita kysely, joka etsii tietyn asiakkaan kaikki varaukset. Aja kysely EXPLAIN-komennon läpi ja ota tuloste talteen.
 EXPLAIN SELECT v.asiakas_id, v.auto_id, v.varaus_alkaa, v.varaus_paattyy  FROM Varaukset v
