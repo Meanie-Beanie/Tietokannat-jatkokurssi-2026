@@ -216,15 +216,15 @@ WHERE  v.varaus_paattyy > NOW();
 -- Luo rooli asiakaspalvelu.
 -- Anna tälle roolille oikeus lukea (SELECT) ja lisätä (INSERT) tietoa Varaukset ja Asiakkaat -tauluihin, sekä oikeus ajaa proseduuri TeeVaraus.
 CREATE ROLE IF NOT EXISTS 'asiakaspalvelu';
-GRANT SELECT, INSERT ON Varaukset TO 'asiakaspalvelu';
-GRANT SELECT, INSERT ON Asiakkaat TO 'asiakaspalvelu';
-GRANT EXECUTE ON PROCEDURE TeeVaraus TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAutoDB.Varaukset TO 'asiakaspalvelu';
+GRANT SELECT, INSERT ON GoAutoDB.Asiakkaat TO 'asiakaspalvelu';
+GRANT EXECUTE ON PROCEDURE GoAutoDB.TeeVaraus TO 'asiakaspalvelu';
 
 
 -- Luo rooli mekaanikko. Anna tälle roolille oikeus päivittää (UPDATE) Autot-taulun tila-saraketta ja lukea v_AktiivisetVaraukset -näkymää.
 CREATE ROLE IF NOT EXISTS 'mekaanikko';
-GRANT UPDATE(tila) ON Autot TO 'mekaanikko';
-GRANT SELECT ON  v_aktiivisetvaraukset TO 'mekaanikko';
+GRANT UPDATE(tila) ON GoAutoDB.Autot TO 'mekaanikko';
+GRANT SELECT ON  GoAutoDB.v_aktiivisetvaraukset TO 'mekaanikko';
 
 -- Luo testikäyttäjät molemmille rooleille ja liitä roolit niihin (GRANT ROLE).
 CREATE USER IF NOT EXISTS 'asiakaspalvelu'@'localhost' IDENTIFIED BY 'PASSWORD';
@@ -242,8 +242,12 @@ WHERE v.asiakas_id = 1;
 
 
 -- Luo tarvittava indeksi (CREATE INDEX), joka nopeuttaa tätä kyselyä (esim. asiakas_id ja varaus_alkaa -sarakkeisiin).
--- Aja EXPLAIN uudelleen ja vertaa tuloksia dokumentaatiossasi.
 CREATE INDEX idx_varaukset_asiakas_varaus_alkaa ON Varaukset (asiakas_id, varaus_alkaa);
+
+-- Aja EXPLAIN uudelleen ja vertaa tuloksia dokumentaatiossasi.
+EXPLAIN SELECT v.asiakas_id, v.auto_id, v.varaus_alkaa, v.varaus_paattyy  FROM Varaukset v
+JOIN Asiakkaat a ON v.asiakas_id = a.asiakas_id
+WHERE v.asiakas_id = 1;
 
 -- Huom: Varmista ensin, että MariaDB:n tapahtuma-ajastin on päällä: SET GLOBAL event_scheduler = ON;
 SET GLOBAL event_scheduler = ON;
